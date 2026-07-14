@@ -40,7 +40,7 @@ void serial_init()
 {
 	s_dev.head = 0;
 	s_dev.tail = 0;
-	spin_lock_init(&s_dev.lock);
+	spin_init(&s_dev.lock);
 
 	uart_write_reg(IER, 0x00);
 	uart_write_reg(LCR, 0x03);
