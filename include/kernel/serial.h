@@ -106,7 +106,7 @@ void serial_init();
  * dangerous but we will implement a ring buffer inthe driver so that
  * we can do serial_read(char *buf, size_t len) instead.
  */
-size_t serial_read(char *buf);
+size_t serial_read(char *buf, size_t max_len);
 
 /*
  * serial_putc(): write a character to the serial port

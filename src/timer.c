@@ -1,32 +1,42 @@
 #include <arch/timer.h>
 #include <kernel/panic.h>
+#include <arch/csr.h>
+#include <kernel/printf.h>
+
+volatile int alarm_pending = 0;
 
 u64 timer_read()
 {
-	/* not implemented */
-	BUG();
+	return csr_read(CSR_TIME);
 }
 
 void timer_irq_enable()
 {
-	/* not implemented */
-	BUG();
+	u64 sie = csr_read(CSR_SIE);
+	sie |= CSR_SIE_STIE;
+	csr_write(CSR_SIE, sie);
 }
 
 void timer_irq_disable()
 {
-	/* not implemented */
-	BUG();
+	u64 sie = csr_read(CSR_SIE);
+	sie &= ~CSR_SIE_STIE;
+	csr_write(CSR_SIE, sie);
 }
 
 void timer_set_alarm(u64 secs)
 {
-	/* not implemented */
-	BUG();
+	u64 now = timer_read();
+	u64 ticks_in_future = now + (secs * TIMER_FREQ);
+	csr_write(CSR_STIMECMP, ticks_in_future);
 }
 
 void timer_irq()
 {
-	/* not implemented */
-	BUG();
+	csr_write(CSR_STIMECMP, -1ULL);
+	
+	if (alarm_pending) {
+		printk(LOG_INFO, "\nalarm\n> ");
+		alarm_pending = 0;
+	}
 }
