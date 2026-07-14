@@ -5,18 +5,16 @@
 #include <arch/plic.h>
 #include <arch/csr.h>
 
-#define UART_BASE 0x10000000UL // Endereço MMIO físico da UART no QEMU Virt
-#define UART_IRQ  10           // IRQ de interrupção externa do dispositivo serial (0x0a)
+#define UART_BASE 0x10000000UL
+#define UART_IRQ  10
 
-/* Registradores do Chip NS16550A mapeados em memória (1 byte cada) */
-#define RBR (UART_BASE + 0) // Receiver Buffer Register (Leitura - Entrada de dados)
-#define THR (UART_BASE + 0) // Transmitter Holding Register (Escrita - Saída de dados)
-#define IER (UART_BASE + 1) // Interrupt Enable Register
-#define FCR (UART_BASE + 2) // FIFO Control Register
-#define LCR (UART_BASE + 3) // Line Control Registerz'
-#define LSR (UART_BASE + 5) // Line Status Register
+#define RBR (UART_BASE + 0)
+#define THR (UART_BASE + 0)
+#define IER (UART_BASE + 1)
+#define FCR (UART_BASE + 2)
+#define LCR (UART_BASE + 3)
+#define LSR (UART_BASE + 5)
 
-/* Tamanho do Buffer Interno para armazenar caracteres recebidos */
 #define SERIAL_BUF_SIZE 512
 
 struct serial_device {
@@ -28,46 +26,32 @@ struct serial_device {
 
 static struct serial_device s_dev;
 
-/* Escreve um registrador da UART de forma segura */
 static inline void uart_write_reg(u64 reg, u8 val)
 {
 	*(volatile u8 *)reg = val;
 }
 
-/* Lê um registrador da UART de forma segura */
 static inline u8 uart_read_reg(u64 reg)
 {
 	return *(volatile u8 *)reg;
 }
 
-/*
- * Inicializa a UART (NS16550A) e prepara o buffer circular interno.
- */
 void serial_init()
 {
 	s_dev.head = 0;
 	s_dev.tail = 0;
 	spinlock_init(&s_dev.lock);
 
-	// Configurações do NS16550A:
 	uart_write_reg(IER, 0x00);
-
 	uart_write_reg(LCR, 0x03);
-
 	uart_write_reg(FCR, 0x07);
-
 	uart_write_reg(IER, 0x01);
 }
 
-/*
- * Habilita as interrupções de dispositivo serial tanto no PLIC quanto no Core local (HART).
- */
 void serial_irq_enable()
 {
-	plic_set_priority(UART_IRQ, 1);
-
-	plic_hart_set_threshold(0);
-
+	plic_irq_set_priority(UART_IRQ, 1);
+	plic_hart_set_threshold(0, 0); // Espera (hart, threshold)
 	plic_hart_enable_irq(0, UART_IRQ);
 
 	u64 sie = csr_read(CSR_SIE);
@@ -75,9 +59,6 @@ void serial_irq_enable()
 	csr_write(CSR_SIE, sie);
 }
 
-/*
- * Desabilita as interrupções do dispositivo serial.
- */
 void serial_irq_disable()
 {
 	u64 sie = csr_read(CSR_SIE);
@@ -87,10 +68,6 @@ void serial_irq_disable()
 	plic_hart_disable_irq(0, UART_IRQ);
 }
 
-/*
- * Tratador de interrupção física (IRQ) do dispositivo serial.
- * Chamado quando novos bytes chegam do terminal para o buffer.
- */
 void serial_irq()
 {
 	u32 irq = plic_hart_claim_irq(0);
@@ -100,7 +77,6 @@ void serial_irq()
 
 		while (uart_read_reg(LSR) & 0x01) {
 			u8 c = uart_read_reg(RBR);
-
 			size_t next_head = (s_dev.head + 1) % SERIAL_BUF_SIZE;
 
 			if (next_head != s_dev.tail) {
@@ -117,10 +93,6 @@ void serial_irq()
 	}
 }
 
-/*
- * Retorna caracteres acumulados no buffer interno para o chamador (Shell).
- * Retorna a quantidade de bytes realmente lidos.
- */
 size_t serial_read(char *buf)
 {
 	size_t count = 0;
@@ -137,19 +109,12 @@ size_t serial_read(char *buf)
 	return count;
 }
 
-/*
- * Envia um único caractere diretamente para a saída UART de forma síncrona.
- */
 void serial_putc(char c)
 {
 	while ((uart_read_reg(LSR) & 0x20) == 0);
-	
 	uart_write_reg(THR, (u8)c);
 }
 
-/*
- * Envia uma string de caracteres formatada para a saída de terminal.
- */
 void serial_puts(char *str)
 {
 	if (!str) return;
