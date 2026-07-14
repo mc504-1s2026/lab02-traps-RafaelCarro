@@ -27,10 +27,10 @@ void handle_irq()
 
 	switch (irq_code) {
 		case 5: // Supervisor Timer Interrupt (STIP)
-			timer_irq(); // Chama o tratador do timer!
+			timer_irq();
 			break;
 		case 9: // Supervisor External Interrupt (SEIP)
-			// Aqui chamaremos a função de tratamento do PLIC (external/serial) no próximo passo
+			serial_irq(); // <-- AGORA conectado de forma correta ao driver serial!
 			break;
 		default:
 			panic("Erro: Interrupcao (IRQ) nao implementada: %d\n", irq_code);

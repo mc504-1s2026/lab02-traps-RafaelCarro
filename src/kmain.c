@@ -88,6 +88,7 @@ void kmain()
 	trap_setup();
 	info("enabling timer...\n");
 	timer_irq_enable();
+	plic_init();
 	info("enabling serial...\n");
 	serial_init();
 	serial_irq_enable();
@@ -131,6 +132,6 @@ void kmain()
 			}
 		}
 
-		__asm__ __volatile__("wfi");
+		//__asm__ __volatile__("wfi");
 	}
 }
