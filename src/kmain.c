@@ -1,6 +1,7 @@
+#include <arch/plic.h>
+#include <arch/timer.h>
 #include <kernel/printf.h>
 #include <kernel/mm.h>
-#include <arch/timer.h>
 #include <kernel/trap.h>
 #include <kernel/serial.h>
 #include <kernel/string.h>
