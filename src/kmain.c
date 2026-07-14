@@ -31,7 +31,7 @@ static void execute_command(char *cmd_line)
 	}
 
 	char *cmd = cmd_line;
-	char *arg = NULL;
+	char *arg = "";
 	char *p = cmd_line;
 
 	while (*p != '\0') {
@@ -52,14 +52,10 @@ static void execute_command(char *cmd_line)
 		printk(LOG_INFO, "%lds\n", uptime_s);
 	}
 	else if (strcmp(cmd, "echo") == 0) {
-		if (arg && *arg != '\0') {
-			printk(LOG_INFO, "%s\n", arg);
-		} else {
-			printk(LOG_INFO, "\n");
-		}
+		printk(LOG_INFO, "%s\n", arg);
 	}
 	else if (strcmp(cmd, "alarm") == 0) {
-		if (arg && *arg != '\0') {
+		if (*arg != '\0') {
 			u64 secs = k_atoi(arg);
 			if (secs > 0) {
 				alarm_pending = 1;
@@ -107,7 +103,6 @@ void kmain()
 		size_t read_bytes = serial_read(&input_char);
 
 		if (read_bytes > 0) {
-			// Trata Carriage Return (\r) ou Newline (\n)
 			if (input_char == '\r' || input_char == '\n') {
 				if (cmd_len > 0) {
 					serial_putc('\n');
