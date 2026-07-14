@@ -15,7 +15,7 @@
 #define LCR (UART_BASE + 3)
 #define LSR (UART_BASE + 5)
 
-#define SERIAL_BUF_SIZE 1024
+#define SERIAL_BUF_SIZE 512
 
 struct serial_device {
 	char buf[SERIAL_BUF_SIZE];
@@ -44,10 +44,10 @@ void serial_init()
 {
 	spin_init(&s_dev.lock);
 
-	uart_write_reg(IER, 0x00);
-	uart_write_reg(LCR, 0x03);
-	uart_write_reg(FCR, 0x07);
-	uart_write_reg(IER, 0x01);
+	uart_write_reg(IER, 0x00); // Desabilita interrupções temporariamente
+	uart_write_reg(LCR, 0x03); // 8n1
+	uart_write_reg(FCR, 0x07); // Habilita e limpa FIFOs
+	uart_write_reg(IER, 0x01); // Habilita interrupção de recebimento (Rx)
 }
 
 void serial_irq_enable()
@@ -68,12 +68,16 @@ void serial_irq_disable()
 	csr_write(CSR_SIE, sie);
 }
 
+/* 
+ * Tratador de interrupção: roda com interrupções globais já desativadas pela CPU.
+ * Usamos apenas o spinlock básico para proteger a escrita concorrente.
+ */
 void serial_irq()
 {
 	u32 irq = plic_hart_claim_irq(0);
 
 	if (irq == UART_IRQ) {
-		u64 flags = spin_lock_irqsave(&s_dev.lock);
+		spin_lock(&s_dev.lock);
 
 		while (uart_read_reg(LSR) & 0x01) {
 			u8 c = uart_read_reg(RBR);
@@ -85,7 +89,7 @@ void serial_irq()
 			}
 		}
 
-		spin_unlock_irqrestore(&s_dev.lock, flags);
+		spin_unlock(&s_dev.lock);
 	}
 
 	if (irq != 0) {
@@ -93,11 +97,17 @@ void serial_irq()
 	}
 }
 
+/*
+ * Leitura pelo loop principal (contexto de aplicação):
+ * Desativa interrupções temporariamente de forma segura para evitar que a 
+ * própria IRQ interrompa a leitura no meio do caminho.
+ */
 size_t serial_read(char *buf)
 {
 	size_t count = 0;
+	u64 flags;
 
-	u64 flags = spin_lock_irqsave(&s_dev.lock);
+	flags = spin_lock_irqsave(&s_dev.lock);
 
 	while (s_dev.tail != s_dev.head) {
 		buf[count++] = s_dev.buf[s_dev.tail];

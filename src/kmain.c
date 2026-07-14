@@ -107,9 +107,10 @@ void kmain()
 		size_t read_bytes = serial_read(&input_char);
 
 		if (read_bytes > 0) {
+			// Trata Carriage Return (\r) ou Newline (\n)
 			if (input_char == '\r' || input_char == '\n') {
 				if (cmd_len > 0) {
-					serial_putc('\n'); // Salta linha apenas se houver comando
+					serial_putc('\n');
 					cmd_buf[cmd_len] = '\0';
 					execute_command(cmd_buf);
 					cmd_len = 0;
@@ -124,11 +125,10 @@ void kmain()
 					serial_puts("\b \b");
 				}
 			}
-			// Ignora outros caracteres de controle ASCII não-imprimíveis
-			else if (input_char >= 32 && input_char < 127) {
+			else {
 				if (cmd_len < CMD_BUF_SIZE - 1) {
 					cmd_buf[cmd_len++] = input_char;
-					serial_putc(input_char); // Faz o eco imediato
+					serial_putc(input_char); // Eco imediato do caractere lido
 				}
 			}
 		}
