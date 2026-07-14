@@ -131,6 +131,6 @@ void kmain()
 			}
 		}
 
-		asm volatile("wfi");
+		__asm__ __volatile__("wfi");
 	}
 }

@@ -40,7 +40,7 @@ void serial_init()
 {
 	s_dev.head = 0;
 	s_dev.tail = 0;
-	spinlock_init(&s_dev.lock);
+	spin_lock_init(&s_dev.lock);
 
 	uart_write_reg(IER, 0x00);
 	uart_write_reg(LCR, 0x03);
@@ -51,7 +51,7 @@ void serial_init()
 void serial_irq_enable()
 {
 	plic_irq_set_priority(UART_IRQ, 1);
-	plic_hart_set_threshold(0, 0); // Espera (hart, threshold)
+	plic_hart_set_threshold(0, 0);
 	plic_hart_enable_irq(0, UART_IRQ);
 
 	u64 sie = csr_read(CSR_SIE);
@@ -64,8 +64,6 @@ void serial_irq_disable()
 	u64 sie = csr_read(CSR_SIE);
 	sie &= ~CSR_SIE_SEIE;
 	csr_write(CSR_SIE, sie);
-
-	plic_hart_disable_irq(0, UART_IRQ);
 }
 
 void serial_irq()
