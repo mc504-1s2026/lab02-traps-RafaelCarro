@@ -102,14 +102,14 @@ void serial_irq()
  * Desativa interrupções temporariamente de forma segura para evitar que a 
  * própria IRQ interrompa a leitura no meio do caminho.
  */
-size_t serial_read(char *buf)
+size_t serial_read(char *buf, size_t max_len)
 {
 	size_t count = 0;
 	u64 flags;
 
 	flags = spin_lock_irqsave(&s_dev.lock);
 
-	while (s_dev.tail != s_dev.head) {
+	while (s_dev.tail != s_dev.head && count < max_len) {
 		buf[count++] = s_dev.buf[s_dev.tail];
 		s_dev.tail = (s_dev.tail + 1) % SERIAL_BUF_SIZE;
 	}

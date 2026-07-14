@@ -100,7 +100,7 @@ void kmain()
 
 	while (1) {
 		char input_char;
-		size_t read_bytes = serial_read(&input_char);
+		size_t read_bytes = serial_read(&input_char, 1);
 
 		if (read_bytes > 0) {
 			if (input_char == '\r' || input_char == '\n') {
