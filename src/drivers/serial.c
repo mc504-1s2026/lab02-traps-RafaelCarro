@@ -15,16 +15,20 @@
 #define LCR (UART_BASE + 3)
 #define LSR (UART_BASE + 5)
 
-#define SERIAL_BUF_SIZE 512
+#define SERIAL_BUF_SIZE 1024
 
 struct serial_device {
 	char buf[SERIAL_BUF_SIZE];
-	size_t head;
-	size_t tail;
+	volatile size_t head;
+	volatile size_t tail;
 	struct spinlock lock;
 };
 
-static struct serial_device s_dev;
+static struct serial_device s_dev = {
+	.head = 0,
+	.tail = 0,
+	.lock = {0}
+};
 
 static inline void uart_write_reg(u64 reg, u8 val)
 {
@@ -38,8 +42,6 @@ static inline u8 uart_read_reg(u64 reg)
 
 void serial_init()
 {
-	s_dev.head = 0;
-	s_dev.tail = 0;
 	spin_init(&s_dev.lock);
 
 	uart_write_reg(IER, 0x00);
@@ -71,7 +73,7 @@ void serial_irq()
 	u32 irq = plic_hart_claim_irq(0);
 
 	if (irq == UART_IRQ) {
-		spin_lock(&s_dev.lock);
+		u64 flags = spin_lock_irqsave(&s_dev.lock);
 
 		while (uart_read_reg(LSR) & 0x01) {
 			u8 c = uart_read_reg(RBR);
@@ -83,7 +85,7 @@ void serial_irq()
 			}
 		}
 
-		spin_unlock(&s_dev.lock);
+		spin_unlock_irqrestore(&s_dev.lock, flags);
 	}
 
 	if (irq != 0) {
@@ -95,14 +97,14 @@ size_t serial_read(char *buf)
 {
 	size_t count = 0;
 
-	spin_lock(&s_dev.lock);
+	u64 flags = spin_lock_irqsave(&s_dev.lock);
 
 	while (s_dev.tail != s_dev.head) {
 		buf[count++] = s_dev.buf[s_dev.tail];
 		s_dev.tail = (s_dev.tail + 1) % SERIAL_BUF_SIZE;
 	}
 
-	spin_unlock(&s_dev.lock);
+	spin_unlock_irqrestore(&s_dev.lock, flags);
 
 	return count;
 }

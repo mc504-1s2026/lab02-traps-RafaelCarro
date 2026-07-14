@@ -108,13 +108,13 @@ void kmain()
 
 		if (read_bytes > 0) {
 			if (input_char == '\r' || input_char == '\n') {
-				serial_putc('\n');
-				cmd_buf[cmd_len] = '\0';
-				
-				execute_command(cmd_buf);
-				
-				cmd_len = 0;
-				memset(cmd_buf, 0, CMD_BUF_SIZE);
+				if (cmd_len > 0) {
+					serial_putc('\n'); // Salta linha apenas se houver comando
+					cmd_buf[cmd_len] = '\0';
+					execute_command(cmd_buf);
+					cmd_len = 0;
+					memset(cmd_buf, 0, CMD_BUF_SIZE);
+				}
 				printk(LOG_INFO, "> ");
 			}
 			else if (input_char == '\b' || input_char == 127) {
@@ -124,10 +124,11 @@ void kmain()
 					serial_puts("\b \b");
 				}
 			}
-			else {
+			// Ignora outros caracteres de controle ASCII não-imprimíveis
+			else if (input_char >= 32 && input_char < 127) {
 				if (cmd_len < CMD_BUF_SIZE - 1) {
 					cmd_buf[cmd_len++] = input_char;
-					serial_putc(input_char);
+					serial_putc(input_char); // Faz o eco imediato
 				}
 			}
 		}
