@@ -31,8 +31,8 @@ static void execute_command(char *cmd_line)
 	}
 
 	char *cmd = cmd_line;
-	char *arg = "";
 	char *p = cmd_line;
+	char *arg = cmd_line + strlen(cmd_line); 
 
 	while (*p != '\0') {
 		if (*p == ' ' || *p == '\t') {
@@ -123,7 +123,7 @@ void kmain()
 			else {
 				if (cmd_len < CMD_BUF_SIZE - 1) {
 					cmd_buf[cmd_len++] = input_char;
-					serial_putc(input_char); // Eco imediato do caractere lido
+					serial_putc(input_char);
 				}
 			}
 		}
